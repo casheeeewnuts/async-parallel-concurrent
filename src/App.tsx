@@ -1,32 +1,105 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
+import {useCallback, useMemo, useState} from 'react'
 import './App.css'
+import {asyncFibonacci, fibonacci} from "./fib";
+import FibWorker from "./fib-worker?worker";
+import {wrap} from "comlink";
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
     <div className="App">
+      <h1>Parallel(Worker) vs. Concurrent(Async)</h1>
+      <div className="container">
+        <div className="card gc-2">
+          <p>Sync</p>
+          <Calculator/>
+          <Counter/>
+        </div>
+        <div className="card gc-3">
+          <p>Async</p>
+          <AsyncCalculator/>
+          <Counter/>
+        </div>
+        <div className="card gc-4">
+          <p>Worker</p>
+          <ParallelCalculator/>
+          <Counter/>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Counter({n = 0}) {
+  const [count, setCount] = useState(n)
+
+  return <button onClick={() => setCount((count) => count + 1)} className="border">
+    count is {count}
+  </button>
+}
+
+function Calculator() {
+  const [num, setNum] = useState(0)
+  const [fib, setFib] = useState(fibonacci(0))
+
+  return (
+    <div>
       <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src="/vite.svg" className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://reactjs.org" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+        <input onChange={e => setNum(e.target.valueAsNumber)} value={num} type="number" min={0}/>
+        <div style={{padding: "0.5em"}}>
+          <button style={{background: "#213547", color: "white"}} onClick={() => setFib(fibonacci(num))}
+                  disabled={Number.isNaN(num)}>calculate
+          </button>
+        </div>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
+      <p>fibonacci number is {fib}</p>
+    </div>
+  )
+}
+
+function AsyncCalculator() {
+  const [num, setNum] = useState(0)
+  const [fib, setFib] = useState(fibonacci(0))
+
+  const calcFib = useCallback(() => {
+    asyncFibonacci(num).then(setFib)
+  }, [num])
+
+  return (
+    <div>
+      <div>
+        <input onChange={e => setNum(e.target.valueAsNumber)} value={num} type="number" min={0}/>
+        <div style={{padding: "0.5em"}}>
+          <button style={{background: "#213547", color: "white"}} onClick={calcFib}
+                  disabled={Number.isNaN(num)}>calculate
+          </button>
+        </div>
       </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+      <p>fibonacci number is {fib}</p>
+    </div>
+  )
+}
+
+function ParallelCalculator() {
+  const fibworker = useMemo(() => wrap<{fibonacci: (n: number) => number}>(new FibWorker()), [])
+
+  const [num, setNum] = useState(0)
+  const [fib, setFib] = useState(fibonacci(0))
+
+  const calcFib = useCallback(() => {
+    fibworker.fibonacci(num).then(setFib)
+  }, [num])
+
+  return (
+    <div>
+      <div>
+        <input onChange={e => setNum(e.target.valueAsNumber)} value={num} type="number" min={0}/>
+        <div style={{padding: "0.5em"}}>
+          <button style={{background: "#213547", color: "white"}} onClick={calcFib}
+                  disabled={Number.isNaN(num)}>calculate
+          </button>
+        </div>
+      </div>
+      <p>fibonacci number is {fib}</p>
     </div>
   )
 }
