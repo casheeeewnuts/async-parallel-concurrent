@@ -1,4 +1,4 @@
-import {useCallback, useMemo, useState} from 'react'
+import {useCallback, useEffect, useMemo, useState} from 'react'
 import './App.css'
 import {asyncFibonacci, fibonacci} from "./fib";
 import FibWorker from "./fib-worker?worker";
@@ -7,7 +7,8 @@ import {wrap} from "comlink";
 function App() {
   return (
     <div className="App">
-      <h1>Parallel(Worker) vs. Concurrent(Async)</h1>
+      <h1>Parallel vs Concurrent</h1>
+      <Timer/>
       <div className="container">
         <div className="card gc-2">
           <p>Sync</p>
@@ -15,18 +16,30 @@ function App() {
           <Counter/>
         </div>
         <div className="card gc-3">
-          <p>Async</p>
+          <p>Concurrent (Async)</p>
           <AsyncCalculator/>
           <Counter/>
         </div>
         <div className="card gc-4">
-          <p>Worker</p>
+          <p>Parallel (WebWorker)</p>
           <ParallelCalculator/>
           <Counter/>
         </div>
       </div>
     </div>
   )
+}
+
+function Timer() {
+  const [datetime, setDatetime] = useState(new Date())
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setDatetime(new Date())
+    }, 1000)
+  }, [])
+
+  return <p className="timer">{datetime.toLocaleTimeString()}</p>
 }
 
 function Counter({n = 0}) {
@@ -40,14 +53,22 @@ function Counter({n = 0}) {
 function Calculator() {
   const [num, setNum] = useState(0)
   const [fib, setFib] = useState(fibonacci(0))
+  const [calculating, setCalculating] = useState(false)
+
+  const calcFib = useCallback(() => {
+    setCalculating(true)
+    setFib(fibonacci(num))
+    setCalculating(false)
+  }, [num])
 
   return (
     <div>
       <div>
         <input onChange={e => setNum(e.target.valueAsNumber)} value={num} type="number" min={0}/>
         <div style={{padding: "0.5em"}}>
-          <button style={{background: "#213547", color: "white"}} onClick={() => setFib(fibonacci(num))}
-                  disabled={Number.isNaN(num)}>calculate
+          <button className="calc" onClick={calcFib}
+                  disabled={calculating || Number.isNaN(num)}>
+            calculate
           </button>
         </div>
       </div>
@@ -59,9 +80,11 @@ function Calculator() {
 function AsyncCalculator() {
   const [num, setNum] = useState(0)
   const [fib, setFib] = useState(fibonacci(0))
+  const [calculating, setCalculating] = useState(false)
 
   const calcFib = useCallback(() => {
-    asyncFibonacci(num).then(setFib)
+    setCalculating(true)
+    asyncFibonacci(num).then(setFib).then(() => setCalculating(false))
   }, [num])
 
   return (
@@ -69,8 +92,10 @@ function AsyncCalculator() {
       <div>
         <input onChange={e => setNum(e.target.valueAsNumber)} value={num} type="number" min={0}/>
         <div style={{padding: "0.5em"}}>
-          <button style={{background: "#213547", color: "white"}} onClick={calcFib}
-                  disabled={Number.isNaN(num)}>calculate
+          <button className="calc"
+                  onClick={calcFib}
+                  disabled={calculating || Number.isNaN(num)}>
+            {calculating ? "calculating" : "calculate"}
           </button>
         </div>
       </div>
@@ -80,13 +105,15 @@ function AsyncCalculator() {
 }
 
 function ParallelCalculator() {
-  const fibworker = useMemo(() => wrap<{fibonacci: (n: number) => number}>(new FibWorker()), [])
+  const fibworker = useMemo(() => wrap<{ fibonacci: (n: number) => number }>(new FibWorker()), [])
 
   const [num, setNum] = useState(0)
   const [fib, setFib] = useState(fibonacci(0))
+  const [calculating, setCalculating] = useState(false)
 
   const calcFib = useCallback(() => {
-    fibworker.fibonacci(num).then(setFib)
+    setCalculating(true)
+    fibworker.fibonacci(num).then(setFib).then(() => setCalculating(false))
   }, [num])
 
   return (
@@ -94,8 +121,10 @@ function ParallelCalculator() {
       <div>
         <input onChange={e => setNum(e.target.valueAsNumber)} value={num} type="number" min={0}/>
         <div style={{padding: "0.5em"}}>
-          <button style={{background: "#213547", color: "white"}} onClick={calcFib}
-                  disabled={Number.isNaN(num)}>calculate
+          <button className="calc"
+                  onClick={calcFib}
+                  disabled={calculating || Number.isNaN(num)}>
+            {calculating ? "calculating" : "calculate"}
           </button>
         </div>
       </div>
