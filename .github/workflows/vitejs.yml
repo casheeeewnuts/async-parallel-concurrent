@@ -46,7 +46,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install
       - name: Build with Vite
-        run: pnpm run vite build
+        run: pnpm run build
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
